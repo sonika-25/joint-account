@@ -61,7 +61,7 @@ describe('test Contract JointAccount', () => {
     let expectedBalance = '1234';
     expect(await account.balance()).to.be.equal(expectedBalance);
 
-    // member can submit proposal
+    // approver can submit proposal
     let destination = wool.address;
     let proposalAmount = '321';
     let proposalId = '1';
@@ -76,27 +76,11 @@ describe('test Contract JointAccount', () => {
       false
     ]);
 
-    // member can reject proposal
-    let rejectedProposalId = proposalId;
-    destination = wool.address;
-    proposalAmount = expectedBalance;
-    proposalId = '2'
-    await account.call('createTransfer', [proposalAmount, destination, VITE], {caller: alice});
-    expect(await account.query('transfers', [proposalId])).to.be.deep.equal([
-      proposalId,
-      proposalAmount,
-      alice.address,
-      destination,
-      VITE,
-      '0',
-      false
-    ]);
-
-    // non-member cannot submit proposal
+    // non-approver cannot submit proposal
     await account.call('createTransfer', [proposalAmount, deployer.address, VITE], {caller: deployer});
     expect(await account.query('transfers', [proposalId+1].amount)).to.be.equal('0');
 
-    // member can vote
+    // approver can vote
     await account.call('approveTransfer', [proposalId], {caller: alice});
     expect(await account.query('transfers', [proposalId])).to.be.deep.equal([
       proposalId,
@@ -120,7 +104,7 @@ describe('test Contract JointAccount', () => {
       false
     ]);
 
-    // non-member cannot vote
+    // non-approver cannot vote
     await account.call('approveTransfer', [proposalId], {caller: deployer});
     expect(await account.query('transfers', [proposalId])).to.be.deep.equal([
       proposalId,
@@ -132,7 +116,7 @@ describe('test Contract JointAccount', () => {
       false
     ]);
 
-    // Final approval vote, and now proposal is reset
+    // Final approval vote send transfer and then resets it
     await account.call('approveTransfer', [proposalId], {caller: bob});
     expect(await account.query('transfers', [proposalId])).to.be.deep.equal([
       proposalId,
@@ -151,7 +135,7 @@ describe('test Contract JointAccount', () => {
 
     // Try a new proposal, but there are no funds, so it should revert
     await expect (account.call('createTransfer', ["5678", destination, VITE], {caller: alice})).to.be.reverted;
-    
+
     let events;
 
     // check Deposited event
@@ -191,7 +175,7 @@ describe('test Contract JointAccount', () => {
     expect(events[0].returnValues.member).to.be.equals(alice.address);
     expect(events[0].returnValues.proposalId).to.be.equals(proposalId);
 
-    // check ProposalFunded event
+    // check TransferApproved event
     events = await account.getPastEvents('TransferApproved', {fromHeight: 0, toHeight: 0});
     expect(events).to.be.an('array');
     expect(events[0]).has.property('returnValues');
